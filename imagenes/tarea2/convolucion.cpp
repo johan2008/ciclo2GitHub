@@ -414,21 +414,25 @@ int convolucion(const char *fileName){
 
  	//for (i = 0; i < length(image); ++i) // 
 
- 	cout<<"height convolucion:   "<<height<<endl;
- 	cout<<"width convolucion:    "<<width<<endl;
+ 	//cout<<"height convolucion:   "<<height<<endl;
+ 	//cout<<"width convolucion:    "<<width<<endl;
 
+ 	double t0,t1;
+ 	t0 = omp_get_wtime();
 
- 	for (int i = 0; i < height; ++i) // Filas
+ 	#pragma omp parallel for schedule(static) private(i,j) //reduction(+:suma)
+
+ 	for ( i = 0; i < height; ++i) // Filas
     
     {
         //for (j = 0; j < length(image); ++j) // Columnas
-        for (int j = 0; j < width; ++j) // Columnas
+        for ( j = 0; j < width; ++j) // Columnas
         {
             // Variable acumuladora
             acumulador = 0;
             
 
-
+            #pragma omp critical
             for ( int c = 0; c < 3; c++){
 
 
@@ -468,6 +472,8 @@ int convolucion(const char *fileName){
         }
 	}
 
+	t1 = omp_get_wtime();
+    cout<<" time in convolucion image:  "<<(t1-t0)<<endl;
 
 	FILE* f2; 
     f2 = fopen("convolucion.bmp","wb");
@@ -578,10 +584,15 @@ void ecualizacion(const char *fileName){
 		lookUp[i] = floor (255*( accum_hist[i]-accumMinimum)/(height*width -accumMinimum));
 	}
 
+	int y, x;
+	double t0,t1;
+ 	t0 = omp_get_wtime();
 
-	for(int y=0; y<height; y++){
-    	for (int x = 0; x < width; ++x)
+ 	#pragma omp parallel for schedule(static) private(y,x) 
+	for(y=0; y<height; y++){
+    	for (x = 0; x < width; ++x)
     	{
+    		#pragma omp critical
     		for(int c=0; c<3; c++){
     			//int ind = data[3*(x+y*width) + c];	
     			//hist[ind] = hist[ind] +1;
@@ -590,7 +601,8 @@ void ecualizacion(const char *fileName){
     	}
     }
 
-
+    t1 = omp_get_wtime();
+    cout<<" time in ecualizacion image:  "<<(t1-t0)<<endl;
 
     FILE* f2; 
     f2 = fopen("hist.bmp","wb");
@@ -618,10 +630,10 @@ int main(){
     //readBMP("lena.bmp");
     
 
-    imageScale(3,3,"bee.bmp");
+    //imageScale(3,3,"bee.bmp");
 
 
-    rotateImage("bee.bmp");
+    //rotateImage("bee.bmp");
 
     convolucion("bee.bmp");
 
