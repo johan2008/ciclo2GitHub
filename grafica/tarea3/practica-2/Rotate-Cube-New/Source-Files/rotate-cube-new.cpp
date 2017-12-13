@@ -32,6 +32,8 @@ GLuint line_buffer1;
 GLuint line_buffer2;
 GLuint line_buffer3;
 
+GLuint fog_mode = 0;
+
 GLuint  u_tView;
 
 // Projection transformation parameters
@@ -471,8 +473,6 @@ void drawObjSphera(GLuint buffer, int num_vertices)
 
 
 
-
-
     glBindBuffer(GL_ARRAY_BUFFER, buffer);
 
     /*----- Set up vertex attribute arrays for each vertex attribute -----*/
@@ -579,6 +579,8 @@ void display( void )
 
     color4 fogColor = (0.7, 0.7, 0.7, 0.5);
 
+
+    glUniform1i( glGetUniformLocation(program, "fog_mode"), fog_mode);
 
     glUniform4fv(glGetUniformLocation(program,"FogColor" ),1 , fogColor);
     glUniform4fv(glGetUniformLocation(program,"CameraEye" ),1 , eye);
@@ -746,6 +748,10 @@ else{
             angleflag=0;
             theta = getAngle(pointbeginx,pointbeginz,pointendx,pointendz);
 
+            cout<<"pointbeginx:  "<<pointbeginx<<endl;
+            cout<<"pointbeginz:  "<<pointbeginz<<endl;
+            cout<<"angle2:   "<<angle2<<endl;
+            cout<<"d*sin(theta*pi/180):  "<<d*sin(theta*pi/180)<<endl;
             newz= pointbeginz-d*sin(theta*pi/180);
             newx=pointbeginx -d*cos(theta*pi/180);
 
@@ -854,11 +860,12 @@ void reshape(int width, int height)
 //----------------------------------------------------------------------------
 void myMouseFunc(int button, int state, int x, int y){
     if(button == GLUT_RIGHT_BUTTON && state == GLUT_DOWN){
-        /*if(beginRolling){
+        cout<<"GLUT_RIGHT_BUTTON"<<endl;
+        if(moveFlag){
             animationFlag = 1 -  animationFlag;
             if (animationFlag == 1) glutIdleFunc(idle);
             else                    glutIdleFunc(NULL);
-        }*/   
+        }  
         //glutIdleFunc(idle);
         //glutIdleFunc(NULL);
 
@@ -892,8 +899,15 @@ void createMenu(void){     glutCreateMenu(menu);
 void myMenu(int id){
     switch(id){
     case 1:
-        eye = init_eye; 
-        animationFlag = 1;
+        //eye = init_eye; 
+        //animationFlag = 1;
+        moveFlag = 0;
+        //setStartPoint(3,1,5);
+        //newx=0; // translate x, after calculation d
+        //newz=0; 
+        angle2=1  ;
+        //setEndPoint(3,1,5);
+        cout<<"case1:   "<<endl;
         glutIdleFunc(idle);
         break;
     case 2:
@@ -1005,6 +1019,13 @@ void shadingMenu(int id){
 
 
 
+void fogMenu(int id){
+
+    fog_mode = id-1;
+    cout<<"fog_mode:  "<<fog_mode <<endl;
+}
+
+
 
 
 
@@ -1028,11 +1049,11 @@ void addControl(){
     GLuint subLSMenu = glutCreateMenu(lightSourceMenu);
     glutAddMenuEntry("Spot Light",1);
     glutAddMenuEntry("Point Source",2);
-    //GLuint subFogMenu = glutCreateMenu(fogMenu);
-    //glutAddMenuEntry("No Fog",1);
-    //glutAddMenuEntry("Linear Fog",2);
-    //glutAddMenuEntry("Exponential Fog",3);
-    //glutAddMenuEntry("Exponential Square Fog",4);
+    GLuint subFogMenu = glutCreateMenu(fogMenu);
+    glutAddMenuEntry("No Fog",1);
+    glutAddMenuEntry("Linear Fog",2);
+    glutAddMenuEntry("Exponential Fog",3);
+    glutAddMenuEntry("Exponential Square Fog",4);
     //GLuint subBSMenu = glutCreateMenu(blendingShadowMenu);
     //glutAddMenuEntry("No", 1);
     //glutAddMenuEntry("Yes", 2);
@@ -1055,7 +1076,7 @@ void addControl(){
     glutAddSubMenu("Shading", subShadingMenu);
     glutAddSubMenu("Lighting", subLSMenu);
     glutAddSubMenu("Wire Frame", subWireMenu);
-    //glutAddSubMenu("Fog", subFogMenu);
+    glutAddSubMenu("Fog", subFogMenu);
     //glutAddSubMenu("Blending Shadow", subBSMenu);
     //glutAddSubMenu("Texture Mapped Ground", subGroundTexMenu);
     //glutAddSubMenu("Texture Mapped Sphere", subSphereTexMenu);

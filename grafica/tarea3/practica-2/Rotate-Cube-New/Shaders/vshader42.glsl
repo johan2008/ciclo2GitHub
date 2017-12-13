@@ -46,7 +46,7 @@ varying  vec3 fE;
 
 varying vec4 vertex ;
 
-
+varying vec4 vPosition4;
 
 void main() 
 {
@@ -54,7 +54,7 @@ void main()
 
 
 
-    vec4 vPosition4 = vec4(vPosition.x, vPosition.y, vPosition.z, 1.0);
+    vPosition4 = vec4(vPosition.x, vPosition.y, vPosition.z, 1.0);
 
 
 	//if(flagS>1){

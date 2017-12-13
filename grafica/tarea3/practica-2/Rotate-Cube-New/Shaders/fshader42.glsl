@@ -16,6 +16,7 @@ varying  vec3 fN;
 varying  vec3 fE;
 
 
+varying vec4 vPosition4;
 
 
 uniform vec3 objectColor;
@@ -30,7 +31,7 @@ uniform vec3 fL;//LIGHT DIRECTIONAL
 uniform vec4 AmbientProduct, DiffuseProduct, SpecularProduct;
 uniform float Shininess;
 uniform vec4 LightPosition;
-
+uniform int fog_mode;
 
 uniform float flag;
 
@@ -68,6 +69,9 @@ void main()
 
 	if(flag>1){
 
+        float density = 0.09, z = length(vPosition4.xyz), f;
+
+
         vec3 Nor = normalize(fN);   
         vec3 E = normalize(fE);  
         vec3 L = normalize(fL); //luz directional
@@ -93,23 +97,34 @@ void main()
 
         gl_FragColor.a = 1.0;
 
-
-        //float d = distance(CameraEye, V);
+        /*
         float d =  sqrt( pow(CameraEye.x-vertex.x,2) + pow(CameraEye.y-vertex.y,2) + pow(CameraEye.z-vertex.z,2) + pow(CameraEye.w-vertex.w,2)  );
-        //float d = (CameraEye -eye)
         float FogMax = 18.0;
         float FogMin = 0.0;
 
-        //if (d>=FogMax) return 1;
-        //  
-        //if (d<=FogMin) return 0;
 
         float alpha ;//= 1 - (FogMax - d) / (FogMax - FogMin);//getFogFactor(d);
         if (d>=FogMax) alpha =  1;
         else if(d<=FogMin) alpha = 0;
-
         else alpha = 1 - (FogMax - d) / (FogMax - FogMin);//getFogFactor(d);
-        gl_FragColor = mix((ambient + diffuse + specular)*color, FogColor, alpha);
+        */
+
+
+        if(fog_mode == 0){
+            f = 1.0;
+        }
+        else if(fog_mode == 1){
+            f = (18.0-z)/(18.0-0.0);
+        }
+        else if(fog_mode == 2){
+            f = exp(-pow(density*z,2));
+        }
+        else{
+            f = exp(-pow(density*z,2));
+        }
+        f = clamp(f, 0.0, 1.0);
+
+        gl_FragColor = mix((ambient + diffuse + specular)*color, FogColor, f);
 
 
         /* for light source 2
