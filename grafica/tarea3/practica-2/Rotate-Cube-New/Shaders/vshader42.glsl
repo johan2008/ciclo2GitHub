@@ -36,6 +36,11 @@ uniform mat4 u_tProj;
 uniform mat4 auxModel;
 
 
+
+varying mat4 u_tModelF;
+varying mat4 u_tViewF;
+
+
 uniform float flagS;
 
 uniform vec4 LightPosition;
@@ -52,7 +57,8 @@ void main()
 {
 
 
-
+    u_tModelF = u_tModel;
+    u_tViewF = u_tView;
 
     vPosition4 = vec4(vPosition.x, vPosition.y, vPosition.z, 1.0);
 

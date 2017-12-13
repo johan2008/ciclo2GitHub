@@ -61,7 +61,8 @@ float getFogFactor(float d)
 }
 */
 
-
+varying mat4 u_tModelF;
+varying mat4 u_tViewF;
 
 void main() 
 { 
@@ -69,7 +70,7 @@ void main()
 
 	if(flag>1){
 
-        float density = 0.09, z = length(vPosition4.xyz), f;
+        float density = 0.09, z = length(u_tViewF*u_tModelF*vPosition4), f;
 
 
         vec3 Nor = normalize(fN);   
@@ -95,10 +96,10 @@ void main()
         //gl_FragColor = (ambient + diffuse );
 
 
-        gl_FragColor.a = 1.0;
+        /*gl_FragColor.a = 1.0;
 
-        /*
-        float d =  sqrt( pow(CameraEye.x-vertex.x,2) + pow(CameraEye.y-vertex.y,2) + pow(CameraEye.z-vertex.z,2) + pow(CameraEye.w-vertex.w,2)  );
+        
+        float d =  sqrt(  pow(CameraEye.x-vertex.x,2) + pow(CameraEye.y-vertex.y,2) + pow(CameraEye.z-vertex.z,2) + pow(CameraEye.w-vertex.w,2)  );
         float FogMax = 18.0;
         float FogMin = 0.0;
 
@@ -114,18 +115,18 @@ void main()
             f = 1.0;
         }
         else if(fog_mode == 1){
-            f = (18.0-z)/(18.0-0.0);
+            f =  (18.0-z)/(18.0-0.0);
         }
         else if(fog_mode == 2){
-            f = exp(-pow(density*z,2));
+            f = 1 - exp(-density*z);
         }
         else{
-            f = exp(-pow(density*z,2));
+            f = 1 - exp(-pow(density*z,2));
         }
         f = clamp(f, 0.0, 1.0);
-
-        gl_FragColor = mix((ambient + diffuse + specular)*color, FogColor, f);
-
+        
+        gl_FragColor = mix(gl_FragColor, FogColor, 1-f);
+        
 
         /* for light source 2
         L = normalize( pointLightPosition.xyz - pos );
