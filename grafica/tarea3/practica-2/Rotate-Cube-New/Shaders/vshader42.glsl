@@ -19,6 +19,7 @@
 attribute  vec3 vPosition;
 attribute  vec3 vColor;
 attribute  vec3 aNormal;
+attribute  vec2 vTexCoord;
 
 
 
@@ -53,6 +54,10 @@ varying vec4 vertex ;
 
 varying vec4 vPosition4;
 
+varying vec2 texCoord;
+
+
+
 void main() 
 {
 
@@ -86,5 +91,8 @@ void main()
 
 
     vertex = vPosition4;
+
+    texCoord = vTexCoord;
+
 
 } 

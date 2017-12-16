@@ -24,8 +24,8 @@ void main()
   if (Texture_app_flag == 0)
      gl_FragColor = color;
   else if (Texture_app_flag == 1)
-     gl_FragColor = texture( texture_2D, texCoord );
+     gl_FragColor = texture2D( texture_2D, texCoord );
   else // Texture_app_flag == 2
-     gl_FragColor = color * texture( texture_2D, texCoord );  
+     gl_FragColor = color * texture2D( texture_2D, texCoord );  
 } 
 

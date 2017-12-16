@@ -35,6 +35,10 @@ uniform int fog_mode;
 
 uniform float flag;
 
+uniform float texture_mapped_ground;
+
+
+
 uniform float flagS;
 
 
@@ -63,6 +67,11 @@ float getFogFactor(float d)
 
 varying mat4 u_tModelF;
 varying mat4 u_tViewF;
+
+
+varying  vec2 texCoord;
+uniform sampler2D texture_2D;
+uniform int Texture_app_flag;
 
 void main() 
 { 
@@ -93,22 +102,6 @@ void main()
         }
 
         gl_FragColor = (ambient + diffuse + specular);
-        //gl_FragColor = (ambient + diffuse );
-
-
-        /*gl_FragColor.a = 1.0;
-
-        
-        float d =  sqrt(  pow(CameraEye.x-vertex.x,2) + pow(CameraEye.y-vertex.y,2) + pow(CameraEye.z-vertex.z,2) + pow(CameraEye.w-vertex.w,2)  );
-        float FogMax = 18.0;
-        float FogMin = 0.0;
-
-
-        float alpha ;//= 1 - (FogMax - d) / (FogMax - FogMin);//getFogFactor(d);
-        if (d>=FogMax) alpha =  1;
-        else if(d<=FogMin) alpha = 0;
-        else alpha = 1 - (FogMax - d) / (FogMax - FogMin);//getFogFactor(d);
-        */
 
 
         if(fog_mode == 0){
@@ -118,15 +111,28 @@ void main()
             f =  (18.0-z)/(18.0-0.0);
         }
         else if(fog_mode == 2){
-            f = 1 - exp(-density*z);
+            f = exp(-density*z);
         }
         else{
-            f = 1 - exp(-pow(density*z,2));
+            f = exp(-pow(density*z,2));
         }
         f = clamp(f, 0.0, 1.0);
         
-        gl_FragColor = mix(gl_FragColor, FogColor, 1-f);
+        //gl_FragColor = mix(gl_FragColor, FogColor, 1-f);
         
+
+        //gl_FragColor = gl_FragColor* texture2D( texture_2D, texCoord );  
+
+
+
+        if (Texture_app_flag == 0)
+             gl_FragColor = mix(gl_FragColor, FogColor, 1-f);//color;
+        //else if (Texture_app_flag == 1)
+        //    gl_FragColor = texture2D( texture_2D, texCoord );
+        else if(texture_mapped_ground>0)// Texture_app_flag == 2
+            gl_FragColor = mix(gl_FragColor* texture2D( texture_2D, texCoord ), FogColor, 1-f);//     gl_FragColor * texture2D( texture_2D, texCoord ); 
+        else
+            gl_FragColor = mix(gl_FragColor, FogColor, 1-f);
 
         /* for light source 2
         L = normalize( pointLightPosition.xyz - pos );
@@ -168,9 +174,12 @@ void main()
 	else{
 	//gl_FragColor = vec4(result,1.0);
 
-
-
-    	gl_FragColor = color;
+        if(texture_mapped_ground>0 ){
+            if (Texture_app_flag == 0) gl_FragColor = color;
+            else gl_FragColor = color*texture2D( texture_2D, texCoord );
+        }else{
+            gl_FragColor = color;
+        }
 
 	}	
 } 

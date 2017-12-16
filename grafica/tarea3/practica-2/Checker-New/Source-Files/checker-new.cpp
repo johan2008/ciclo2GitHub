@@ -106,7 +106,7 @@ void init(void)
                     sizeof(quad_texCoord), quad_texCoord);
 
     // Load shaders and create a shader program (to be used in display())
-    program = InitShader( "../Shaders/vTexture.glsl", "../Shaders/fTexture.glsl" );
+    program = InitShader( "../Shaders/vTexture.glsl", "fTexture.glsl" );
 }
 //----------------------------------------------------------------------------
 // drawObj(buffer, num_vertices):
