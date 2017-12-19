@@ -6,6 +6,8 @@
 #include <vector>
 #include <iterator>
 #include <cmath>
+#include <algorithm>    // std::sort
+
 
 #include <omp.h>
 
@@ -299,7 +301,7 @@ void imageScale(int scaleX, int scaleY, const char *fileName){
         for( cx = 0; cx < newWidth; cx++)
         {
             int pixel = (cy * (newWidth *3)) + (cx*3);
-            int nearestMatch =  (((int)(cy / scaleHeight) * (width *3)) + ((int)(cx / scaleWidth) *3) );
+            int nearestMatch =  (    ((int)(cy / scaleHeight) * (width *3)) +   ((int)(cx / scaleWidth) *3)    );
                 
             newData[pixel    ] =  data[nearestMatch    ];
             newData[pixel + 1] =  data[nearestMatch + 1];
@@ -623,6 +625,161 @@ void ecualizacion(const char *fileName){
 }
 
 
+int medianImage(const char *fileName){
+    FILE* f = fopen(fileName, "rb");
+    unsigned char info[54];
+    fread(info, sizeof(unsigned char), 54, f); // read the 54-byte header
+
+    // extract image height and width from header
+    int width = *(int*)&info[18];
+    int height = *(int*)&info[22];
+
+    int size = 3 * width * height;
+    unsigned char* data = new unsigned char[size]; // allocate 3 bytes per pixel
+    fread(data, sizeof(unsigned char), size, f); // read the rest of the data at once
+    fclose(f);
+
+
+
+
+
+    int kernel[3][3] = {
+                        {0, 0, 0},
+                        {0, 1, 0},
+                        {0, 0, 0}
+                        };
+
+    int filesize2 = width*height*3;
+
+    unsigned char bmpfileheader[14] = {'B','M', 0,0,0,0, 0,0, 0,0, 54,0,0,0};
+    unsigned char bmpinfoheader[40] = {40,0,0,0, 0,0,0,0, 0,0,0,0, 1,0, 24,0};
+    unsigned char bmppad[3] = {0,0,0};
+
+    bmpfileheader[ 2] = (unsigned char)(filesize2    );
+    bmpfileheader[ 3] = (unsigned char)(filesize2>> 8);
+    bmpfileheader[ 4] = (unsigned char)(filesize2>>16);
+    bmpfileheader[ 5] = (unsigned char)(filesize2>>24);
+
+    bmpinfoheader[ 4] = (unsigned char)(       width    );
+    bmpinfoheader[ 5] = (unsigned char)(       width>> 8);
+    bmpinfoheader[ 6] = (unsigned char)(       width>>16);
+    bmpinfoheader[ 7] = (unsigned char)(       width>>24);
+    bmpinfoheader[ 8] = (unsigned char)(       height    );
+    bmpinfoheader[ 9] = (unsigned char)(       height>> 8);
+    bmpinfoheader[10] = (unsigned char)(       height>>16);
+    bmpinfoheader[11] = (unsigned char)(       height>>24);
+
+
+    int mitad, i,j,m,n,mm,nn,ii,jj, acumulador;
+
+
+    mitad = length(kernel) / 2;
+    //int acumulador = 0;
+
+
+
+    unsigned char* dataRotate = new unsigned char [width * height * 3];
+
+
+    //for (i = 0; i < length(image); ++i) // 
+
+    //cout<<"height convolucion:   "<<height<<endl;
+    //cout<<"width convolucion:    "<<width<<endl;
+
+    double t0,t1;
+    t0 = omp_get_wtime();
+
+    std::vector<int> aux;
+    int median;
+
+    #pragma omp parallel for schedule(static) private(i,j) //reduction(+:suma)
+
+    for ( i = 0; i < height; ++i) // Filas
+    
+    {
+        //for (j = 0; j < length(image); ++j) // Columnas
+        for ( j = 0; j < width; ++j) // Columnas
+        {
+            // Variable acumuladora
+            acumulador = 0;
+            
+
+            #pragma omp critical
+            for ( int c = 0; c < 3; c++){
+
+
+            for (m = 0; m < length(kernel); ++m) // Filas del Kernel
+            {
+                mm = length(kernel) - 1 - m; // Indice de la fila del kernel alrevez
+
+                for (n = 0; n < length(kernel); ++n) // Columnas del kernel
+                {
+                    nn = length(kernel) - 1 - n; // Indice de la columna del kernel alrevez
+
+                    
+                    ii = i + (m - mitad);
+                    jj = j + (n - mitad);
+
+                    // validar limites de la imagen 00000
+                    if (ii >= 0 && ii < height && jj >= 0 && jj < width  )
+                    {
+                        //acumulador += data[3*(jj+ii*width) + c] * kernel[mm][nn];
+                        aux.push_back(data[3*(jj+ii*width) + c]);    //+= data[3*(jj+ii*width) + c] * kernel[mm][nn];
+
+                        //cout<<"a   ";
+                    }                        
+                }
+            }
+            //cout<<"---------------------------------------------------------"<<endl;
+            std::sort (aux.begin(), aux.begin() +aux.size());
+
+
+            if(aux.size()%2 == 0){
+                median = (aux[aux.size()/2] +  aux[aux.size()/2 -1])/2;     
+            }else{
+                median = aux[aux.size()/2 ]; 
+            }
+
+
+            //dataRotate[i][j] = acumulador;
+
+
+            //valor = data[3*(x+y*width) + c];
+
+            dataRotate[3*(j+i*width) + c] = acumulador;
+
+            }
+
+
+
+
+        }
+    }
+
+    t1 = omp_get_wtime();
+    cout<<" time in convolucion image:  "<<(t1-t0)<<endl;
+
+    FILE* f2; 
+    f2 = fopen("mediana.bmp","wb");
+    fwrite(bmpfileheader,1,14,f2);
+    fwrite(bmpinfoheader,1,40,f2);
+    /*for(int i=0; i<newHeight; i++)
+    {
+        fwrite(newData+(newWidth*(newHeight-i-1)*3),3,newWidth,f);
+        fwrite(bmppad,1,(4-(newWidth*3)%4)%4,f);
+    }*/
+
+    for(int i=height -1; i>=0; i--)
+    {
+        fwrite(dataRotate+(width*(height-i-1)*3),3,width,f2);
+        fwrite(bmppad,1,(4-(width*3)%4)%4,f2);
+    }  
+
+
+
+}
+
+
 
 
 int main(){
@@ -630,14 +787,16 @@ int main(){
     //readBMP("lena.bmp");
     
 
-    //imageScale(3,3,"bee.bmp");
+    imageScale(3,3,"bee.bmp");
 
 
-    //rotateImage("bee.bmp");
+    rotateImage("bee.bmp");
 
     convolucion("bee.bmp");
 
     ecualizacion("bee.bmp");
+
+    medianImage("bee.bmp");
 
     return 0;
 }
