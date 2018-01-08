@@ -290,6 +290,8 @@ void imageScale(int scaleX, int scaleY, const char *fileName){
     double scaleHeight = (double)newHeight / (double)height;
 
 
+    //cout<<"ORIGINAL:  "<<data[2000]<<endl;
+
 
     double t0,t1;
     //t0 = omp_get_wtime();
@@ -625,6 +627,175 @@ void ecualizacion(const char *fileName){
 }
 
 
+void SaltPepperNoise(const char *fileName){
+    FILE* f = fopen(fileName, "rb");
+    unsigned char info[54];
+    fread(info, sizeof(unsigned char), 54, f); // read the 54-byte header
+
+    // extract image height and width from header
+    int width = *(int*)&info[18];
+    int height = *(int*)&info[22];
+
+    int size = 3 * width * height;
+    unsigned char* data = new unsigned char[size]; // allocate 3 bytes per pixel
+    fread(data, sizeof(unsigned char), size, f); // read the rest of the data at once
+    fclose(f);
+
+
+
+    double d = 0.05; // densidad del ruido.
+
+
+    int cantidadPixel = d*size;
+
+    cout<< "numero de pixel afectados:   " << cantidadPixel<<endl;
+
+
+    int cy, cx,c;
+    //#pragma omp parallel for schedule(static) private(cy,cx) //reduction(+:suma)
+    /*
+    for(cy = 0; cy < height; cy++)
+    {
+        for(int cx = 0; cx < width; cx++)
+        {
+            //#pragma omp critical
+            for ( c = 0; c < 3; c++)
+            {
+                x = round (cos(radians)*cx +sin(radians)*cy );               
+                y = round (-sin(radians)*cx + cos(radians)*cy );
+
+                if(x<0) x = 0;
+                if(y<0) y = 0;
+
+                valor = data[3*(x+y*width) + c];
+                dataRotate[3*(cx+cy*width) + c] = valor;
+            
+            }            
+        }
+    }
+    */
+
+
+    int valor;
+
+    int numPixel ;
+    double salPimienta;
+    numPixel = rand()%cantidadPixel;
+    salPimienta = rand();
+    cout<<"random:  "<<numPixel<<endl;
+    cout<<"random:  "<<salPimienta<<endl;
+
+    unsigned char* dataRotate = new unsigned char [width * height * 3];
+
+
+    double t0,t1;
+    t0 = omp_get_wtime();
+    #pragma omp parallel for schedule(static) private(cy,cx)
+    for(cy = 0; cy < height; cy++)
+    {
+        for(int cx = 0; cx < width; cx++)
+        {
+            #pragma omp critical
+            for ( c = 0; c < 3; c++)
+            {
+                //x = round (cos(radians)*cx +sin(radians)*cy );               
+                //y = round (-sin(radians)*cx + cos(radians)*cy );
+
+                //if(x<0) x = 0;
+                //if(y<0) y = 0;
+
+                //valor = data[3*(x+y*width) + c];
+                
+
+                valor = data[3*(cx+cy*width) + c];
+                dataRotate[3*(cx+cy*width) + c] = valor;
+            
+            }            
+        }
+    }
+    t1 = omp_get_wtime();
+    cout<<" time in SaltPepperNoise image:  "<<(t1-t0)<<endl;
+
+
+
+    /*for(cy = 0; cy < height; cy++)
+    {
+        for(int cx = 0; cx < width; cx++)
+        {
+            for ( c = 0; c < 3; c++)
+            {
+
+                valor = data[3*(cx+cy*width) + c];
+                dataRotate[3*(cx+cy*width) + c] = valor;
+            
+            }            
+        }
+    }*/
+
+
+
+
+    for(int i=0; i<cantidadPixel; i++){
+        numPixel = rand()%(width * height);
+        salPimienta = ((double) rand() / (RAND_MAX)) + 1;;
+
+        if( salPimienta >1.5 ){
+            //cout<<"white:  "<<endl;
+            dataRotate[numPixel*3] = 0;
+            dataRotate[numPixel*3 +1] = 0;
+            dataRotate[numPixel*3 +2] = 0;
+        }else{
+            //cout<<"black:  "<<endl;
+            dataRotate[numPixel*3] = 255;
+            dataRotate[numPixel*3 +1] = 255;
+            dataRotate[numPixel*3 +2] = 255;
+        }
+
+    }
+
+
+    int filesize2 = width*height*3;
+
+    unsigned char bmpfileheader[14] = {'B','M', 0,0,0,0, 0,0, 0,0, 54,0,0,0};
+    unsigned char bmpinfoheader[40] = {40,0,0,0, 0,0,0,0, 0,0,0,0, 1,0, 24,0};
+    unsigned char bmppad[3] = {0,0,0};
+
+    bmpfileheader[ 2] = (unsigned char)(filesize2    );
+    bmpfileheader[ 3] = (unsigned char)(filesize2>> 8);
+    bmpfileheader[ 4] = (unsigned char)(filesize2>>16);
+    bmpfileheader[ 5] = (unsigned char)(filesize2>>24);
+
+    bmpinfoheader[ 4] = (unsigned char)(       width    );
+    bmpinfoheader[ 5] = (unsigned char)(       width>> 8);
+    bmpinfoheader[ 6] = (unsigned char)(       width>>16);
+    bmpinfoheader[ 7] = (unsigned char)(       width>>24);
+    bmpinfoheader[ 8] = (unsigned char)(       height    );
+    bmpinfoheader[ 9] = (unsigned char)(       height>> 8);
+    bmpinfoheader[10] = (unsigned char)(       height>>16);
+    bmpinfoheader[11] = (unsigned char)(       height>>24);
+
+
+
+    FILE* f2; 
+    f2 = fopen("SalYPimienta.bmp","wb");
+    fwrite(bmpfileheader,1,14,f2);
+    fwrite(bmpinfoheader,1,40,f2);
+    /*for(int i=0; i<newHeight; i++)
+    {
+        fwrite(newData+(newWidth*(newHeight-i-1)*3),3,newWidth,f);
+        fwrite(bmppad,1,(4-(newWidth*3)%4)%4,f);
+    }*/
+
+    for(int i=height -1; i>=0; i--)
+    {
+        fwrite(dataRotate+(width*(height-i-1)*3),3,width,f2);
+        fwrite(bmppad,1,(4-(width*3)%4)%4,f2);
+    }  
+
+}
+
+
+
 int medianImage(const char *fileName){
     FILE* f = fopen(fileName, "rb");
     unsigned char info[54];
@@ -690,63 +861,75 @@ int medianImage(const char *fileName){
     t0 = omp_get_wtime();
 
     std::vector<int> aux;
-    int median;
+    
+    int medianValueR, medianValueG, medianValueB;
 
     #pragma omp parallel for schedule(static) private(i,j) //reduction(+:suma)
-
     for ( i = 0; i < height; ++i) // Filas
-    
     {
         //for (j = 0; j < length(image); ++j) // Columnas
         for ( j = 0; j < width; ++j) // Columnas
         {
             // Variable acumuladora
             acumulador = 0;
-            
-
             #pragma omp critical
-            for ( int c = 0; c < 3; c++){
-
-
-            for (m = 0; m < length(kernel); ++m) // Filas del Kernel
+            for ( int c = 0; c < 3; c++)
             {
-                mm = length(kernel) - 1 - m; // Indice de la fila del kernel alrevez
+            std::vector<int> medianR;
+            std::vector<int> medianG;
+            std::vector<int> medianB;
 
-                for (n = 0; n < length(kernel); ++n) // Columnas del kernel
+                //#pragma omp critical
+                for (m = 0; m < length(kernel); ++m) // Filas del Kernel
                 {
-                    nn = length(kernel) - 1 - n; // Indice de la columna del kernel alrevez
-
-                    
-                    ii = i + (m - mitad);
-                    jj = j + (n - mitad);
-
-                    // validar limites de la imagen 00000
-                    if (ii >= 0 && ii < height && jj >= 0 && jj < width  )
+                    mm = length(kernel) - 1 - m; // Indice de la fila del kernel alrevez
+                    for (n = 0; n < length(kernel); ++n) // Columnas del kernel
                     {
-                        //acumulador += data[3*(jj+ii*width) + c] * kernel[mm][nn];
-                        aux.push_back(data[3*(jj+ii*width) + c]);    //+= data[3*(jj+ii*width) + c] * kernel[mm][nn];
-
-                        //cout<<"a   ";
-                    }                        
+                        nn = length(kernel) - 1 - n; // Indice de la columna del kernel alrevez
+                        ii = i + (m - mitad);
+                        jj = j + (n - mitad);
+                        // validar limites de la imagen 00000
+                        if (ii >= 0 && ii < height && jj >= 0 && jj < width  )
+                        {
+                            //acumulador += data[3*(jj+ii*width) + c] * kernel[mm][nn];
+                            //aux.push_back(data[3*(jj+ii*width) + c]);    //+= data[3*(jj+ii*width) + c] * kernel[mm][nn];
+                            medianR.push_back(data[3*(jj+ii*width) + c]);
+                            medianG.push_back(data[3*(jj+ii*width) + c]);
+                            medianB.push_back(data[3*(jj+ii*width) + c]);
+                        }                        
+                    }
                 }
-            }
-            //cout<<"---------------------------------------------------------"<<endl;
-            std::sort (aux.begin(), aux.begin() +aux.size());
+                cout<<"mediana 1"<<endl;
+
+                //cout<<"---------------------------------------------------------"<<endl;
+                //std::sort (aux.begin(), aux.begin() +aux.size());
+                std::sort (medianR.begin(), medianR.end());
+                std::sort (medianG.begin(), medianG.end());
+                std::sort (medianB.begin(), medianB.end());
+
+                if(medianR.size()%2 == 0){
+                    //median = (aux[aux.size()/2] +  aux[aux.size()/2 -1])/2;     
+                    medianValueR = (medianR[medianR.size()/2] +  medianR[medianR.size()/2 -1])/2;
+                    medianValueG = (medianG[medianG.size()/2] +  medianG[medianG.size()/2 -1])/2;
+                    medianValueB = (medianB[medianB.size()/2] +  medianB[medianB.size()/2 -1])/2;
+                }else{
+                    //median = aux[aux.size()/2 ];
+                    medianValueR = medianR[medianR.size()/2 ];
+                    medianValueG = medianG[medianG.size()/2 ];
+                    medianValueB = medianB[medianB.size()/2 ]; 
+                }
+
+                cout<<"mediana 2  "<<endl;
+
+                //dataRotate[i][j] = acumulador;
 
 
-            if(aux.size()%2 == 0){
-                median = (aux[aux.size()/2] +  aux[aux.size()/2 -1])/2;     
-            }else{
-                median = aux[aux.size()/2 ]; 
-            }
+                //valor = data[3*(x+y*width) + c];
 
-
-            //dataRotate[i][j] = acumulador;
-
-
-            //valor = data[3*(x+y*width) + c];
-
-            dataRotate[3*(j+i*width) + c] = acumulador;
+                //dataRotate[3*(j+i*width) + c] = acumulador;
+                dataRotate[3*(j+i*width) + c] = medianValueR;
+                dataRotate[3*(j+i*width) + c] = medianValueG;
+                dataRotate[3*(j+i*width) + c] = medianValueB;
 
             }
 
@@ -757,7 +940,7 @@ int medianImage(const char *fileName){
     }
 
     t1 = omp_get_wtime();
-    cout<<" time in convolucion image:  "<<(t1-t0)<<endl;
+    cout<<" time in median image:  "<<(t1-t0)<<endl;
 
     FILE* f2; 
     f2 = fopen("mediana.bmp","wb");
@@ -790,13 +973,22 @@ int main(){
     imageScale(3,3,"bee.bmp");
 
 
-    rotateImage("bee.bmp");
+    //rotateImage("bee.bmp");
 
-    convolucion("bee.bmp");
+    //convolucion("bee.bmp");
 
-    ecualizacion("bee.bmp");
+    //ecualizacion("bee.bmp");
 
-    medianImage("bee.bmp");
+    SaltPepperNoise("bee.bmp");
+    medianImage("SalYPimienta.bmp");
+
+    cout<<"sal y pimienta"<<endl;
+
+    
+
+
+
+
 
     return 0;
 }
