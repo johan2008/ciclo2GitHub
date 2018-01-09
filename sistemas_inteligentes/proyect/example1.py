@@ -2,6 +2,7 @@
 #https://ahmedbesbes.com/sentiment-analysis-on-twitter-using-word2vec-and-keras.html
 
 import xml.etree.ElementTree as ET
+import re
 import pandas as pd
 from random import shuffle
 from nltk.tokenize import TweetTokenizer # a tweet tokenizer from nltk.
@@ -20,20 +21,33 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 import itertools
 
 def remove_repeated(word):
-    word = ''.join(c for c, _ in itertools.groupby(word))
-    return word
+    return ''.join(c for c, _ in itertools.groupby(word))
+
+def remove_numbers(sentence):
+    return re.sub(" \d+", " DIGITO", sentence)
+
+def remove_single_characters(sentence):
+     return re.sub(r"\b[a-zA-Z]\b", "",sentence)
+
+def lemmatize(word):
+    from nltk.stem import WordNetLemmatizer
+    lemmatizer=WordNetLemmatizer()
+    return lemmatizer.lemmatize(word)
 
 def clean_tweet(tweet):
     #try:
         #tweet = unicode(tweet.decode('utf-8').lower())
         #tokenizer = TweetTokenizer()
         tweet = tweet.lower()
+        tweet = remove_numbers(tweet)
+        tweet = remove_single_characters(tweet)
         tokens = TweetTokenizer().tokenize(tweet)
         tokens = filter(lambda t: not t.startswith('@') 
                               and not t.startswith('http') 
                               and not t.startswith('#'), tokens)
         tokens = filter(lambda t: t.strip('#\'"?,.!<>[]-') , tokens )
         tokens = map(remove_repeated,tokens)
+        tokens = map(lemmatize,tokens)
         #tokens = filter(lambda t:, tokens)
         #tokens = filter(lambda t: not t.startswith('http'), tokens)
         return tokens
@@ -87,6 +101,9 @@ x_test = data_test.tokens
 y_test = getTest("data/intertass-sentiment.qrel")
 
 
+#s = '@ManuBarba Lo feo es llegar al reina sofia 989632 y que los descuentos de estudiante sean para menores de 27 anos #hola'
+#print clean_tweet(s)
+
 def getDoc2Vec(sentences,size_embeddings):
     try:
         model = Doc2Vec.load('models/model.d2v')
@@ -137,7 +154,7 @@ def getFasText(sentences,size_embeddings):
         #model = FastText(min_count=1, model = 'skipgram', size = size_embeddings)
         model = FastText( min_count=1, size = size_embeddings)
         model.build_vocab(sentences)
-        model.train(sentences, total_examples=model.corpus_count, epochs=model.iter)
+        model.train(sentences, total_examples=model.corpus_count, epochs=models.iter)
         model.save('models/model.ft')
     return model
 
@@ -166,9 +183,14 @@ def buildWordVector(model ,tfidf , tokens, size ):
 #m = buildWordVector(x_train[0],300)
 #print m.shape
 
-def getVectorbyDoc(model , sentences , type ):
-    if type == "GLOVE" :
+def getVectorbyDoc(model , sentences, name , type ):
+    if name == "GLOVE" :
         vectors = np.asarray([ model.transform_paragraph(sentence,epochs=10,ignore_missing=True) for sentence in sentences ])
+    elif name == "DOC2VEC" :
+        if type == "TRAIN" :
+            vectors = np.asarray([ model.docvecs[v] for v in range(0,len(sentences)) ])
+        elif type == "TEST" :
+            vectors = np.asarray([ model.docvecs[v] for v in range(len(model.docvecs)-1,len(model.docvecs)-len(sentences)-1,-1) ])
     else :
         print 'building tf-idf matrix ...'
         vectorizer = TfidfVectorizer(analyzer=lambda x:x, min_df=10)
@@ -182,9 +204,11 @@ def getVectorbyDoc(model , sentences , type ):
 
 
 
-size_embeddings = 100 
+size_embeddings = 50 
 ### obtener caracteristicas
 train_sentences = np.asarray(x_train) #[x for x in x_train ] 
+
+
 doc2vec = getDoc2Vec(train_sentences,size_embeddings)
 word2vec = getWord2Vec(train_sentences,size_embeddings)
 glove2vec = getGlove2Vec(train_sentences,size_embeddings)
@@ -193,22 +217,38 @@ fastext = getFasText(train_sentences,size_embeddings)
 #print word2vec.wv.vocab
 #print word2vec.most_similar("hola")
 #print word2vec.most_similar('tener')
-
-train_vectors_glove = getVectorbyDoc(glove2vec,train_sentences,"GLOVE")
-train_vectors_doc2vec = getVectorbyDoc(doc2vec,train_sentences,"DOC2VEC")
-train_vectors_fastext = getVectorbyDoc(fastext,train_sentences,"FASTTEXT")
+train_sentences = np.asarray(x_train) #[x for x in x_train ] 
+train_vectors_glove = getVectorbyDoc(glove2vec,train_sentences,"GLOVE","TRAIN")
+train_vectors_doc2vec = getVectorbyDoc(doc2vec,train_sentences,"DOC2VEC","TRAIN")
+train_vectors_fastext = getVectorbyDoc(fastext,train_sentences,"FASTTEXT","TRAIN")
 
 test_sentences = np.asarray(x_test) #[x for x in x_train ] 
-test_vectors_glove = getVectorbyDoc(glove2vec,test_sentences,"GLOVE")
-test_vectors_doc2vec = getVectorbyDoc(doc2vec,test_sentences,"DOC2VEC")
-test_vectors_fastext = getVectorbyDoc(fastext,test_sentences,"FASTTEXT")
+test_vectors_glove = getVectorbyDoc(glove2vec,test_sentences,"GLOVE","TEST")
+test_vectors_doc2vec = getVectorbyDoc(doc2vec,test_sentences,"DOC2VEC","TEST")
+test_vectors_fastext = getVectorbyDoc(fastext,test_sentences,"FASTTEXT","TEST")
 
-print test_vectors_glove.shape
-print test_vectors_doc2vec.shape
-print test_vectors_fastext.shape
+print len(train_vectors_doc2vec)
+print len(test_vectors_doc2vec)
+
+def reshape(start , end , y,r,g,b):
+    #print start , end
+    vector =  np.zeros((end-start,y, 1 , 3))
+    for i in range(0,start-end) :
+        for j in range(y) :
+            vector[i][j][0][0] = r[i][j] 
+            vector[i][j][0][1] = g[i][j] 
+            vector[i][j][0][2] = b[i][j] 
+    return vector
 
 
-def CNN(train_vecs_w2v,test_vecs_w2v , y_train , y_test , size_vectors ):
+#print train_vectors_glove[0][0]
+#print train_vectors_doc2vec[0][0]
+#print train_vectors_fastext[0][0]
+
+#train_2 = np.asarray([train_vectors_doc2vec,train_vectors_glove,train_vectors_fastext])
+#test_2 = np.asarray([test_vectors_doc2vec,test_vectors_glove,test_vectors_fastext])
+
+def CNN(X_train , X_test , y_train , y_test , size_vectors ):
 
     from keras.models import Sequential
     from keras.layers import Conv2D, Dropout, Merge, Dense, Activation ,MaxPooling2D,Flatten
@@ -217,12 +257,6 @@ def CNN(train_vecs_w2v,test_vecs_w2v , y_train , y_test , size_vectors ):
     from keras import optimizers
 
 
-    print train_vecs_w2v.shape
-
-    X_train = train_vecs_w2v.reshape(train_vecs_w2v.shape[0], size_vectors , 1 ,1)
-    X_test = test_vecs_w2v.reshape(test_vecs_w2v.shape[0], size_vectors, 1 , 1)
-    print (" ---------------------------------- ")
-    print (len(X_train[0][0]))
     print X_train.shape
     print X_test.shape
 
@@ -234,7 +268,7 @@ def CNN(train_vecs_w2v,test_vecs_w2v , y_train , y_test , size_vectors ):
 
     model = Sequential()
 
-    model.add(Conv2D(32, (3, 1), activation='relu', input_shape=(size_vectors,1,1)))
+    model.add(Conv2D(512, (3, 1), activation='relu', input_shape=(size_vectors,1,3)))
 
     #print model.output_shape
 
@@ -243,8 +277,9 @@ def CNN(train_vecs_w2v,test_vecs_w2v , y_train , y_test , size_vectors ):
     model.add(Dropout(0.25)) # evita overfitting
 
     model.add(Flatten())
-    model.add(Dense(1, activation='relu'))
+    model.add(Dense(512, activation='relu'))
     model.add(Dropout(0.5))
+
     model.add(Dense(4, activation='softmax'))
 
     model.compile(loss='categorical_crossentropy',
@@ -252,11 +287,15 @@ def CNN(train_vecs_w2v,test_vecs_w2v , y_train , y_test , size_vectors ):
                   metrics=['accuracy'])
 
 
-    model.fit(X_train, Y_train,batch_size= 32,  epochs=20, verbose=1)
+    model.fit(X_train, Y_train, batch_size= 16 ,  epochs=20, verbose=1 )
 
-    score = model.evaluate(X_test, Y_test, verbose=0)
+    score = model.evaluate(X_test, Y_test, batch_size = 16 , verbose=0)
 
     print score[1]
 
+train_shape = x_train.shape
+test_shape = x_test.shape
+X_train = reshape( 0 , train_shape[0],size_embeddings,train_vectors_doc2vec,train_vectors_glove,train_vectors_fastext)
+X_test = reshape( train_shape[0] , train_shape[0]+test_shape[0], size_embeddings , test_vectors_doc2vec,test_vectors_glove,test_vectors_fastext)
 
-CNN(train_vectors_doc2vec,test_vectors_doc2vec,y_train,y_test,size_embeddings)
+CNN(X_train,X_test,y_train,y_test,size_embeddings)
