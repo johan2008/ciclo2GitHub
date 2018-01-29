@@ -964,13 +964,231 @@ int medianImage(const char *fileName){
 
 
 
+void blackWhileImage(char* filename){
+    FILE* f = fopen(filename, "rb");
+    unsigned char info[54];
+    fread(info, sizeof(unsigned char), 54, f); // read the 54-byte header
+    // extract image height and width from header
+    int width  = *(int*)&info[18];
+    int height = *(int*)&info[22];
+
+    int size = 3 * width * height;
+    unsigned char* data = new unsigned char[size]; // allocate 3 bytes per pixel
+    fread(data, sizeof(unsigned char), size, f); // read the rest of the data at once
+    fclose(f);
+
+    int filesize2 = width*height*3;
+    unsigned char bmpfileheader[14] = {'B','M', 0,0,0,0, 0,0, 0,0, 54,0,0,0};
+    unsigned char bmpinfoheader[40] = {40,0,0,0, 0,0,0,0, 0,0,0,0, 1,0, 24,0};
+    unsigned char bmppad[3] = {0,0,0};
+
+    bmpfileheader[ 2] = (unsigned char)(filesize2);
+    bmpfileheader[ 3] = (unsigned char)(filesize2>> 8);
+    bmpfileheader[ 4] = (unsigned char)(filesize2>>16);
+    bmpfileheader[ 5] = (unsigned char)(filesize2>>24);
+    bmpinfoheader[ 4] = (unsigned char)(width);
+    bmpinfoheader[ 5] = (unsigned char)(width>> 8);
+    bmpinfoheader[ 6] = (unsigned char)(width>>16);
+    bmpinfoheader[ 7] = (unsigned char)(width>>24);
+    bmpinfoheader[ 8] = (unsigned char)(height);
+    bmpinfoheader[ 9] = (unsigned char)(height>> 8);
+    bmpinfoheader[10] = (unsigned char)(height>>16);
+    bmpinfoheader[11] = (unsigned char)(height>>24);
+
+
+    int angle=15;        //45° for example 
+    //Convert degrees to radians 
+    float radians=(2*3.1416*angle)/360; 
+
+    float cosine=(float)cos(radians); 
+    float sine=(float)sin(radians); 
+    unsigned char* dataRotate = new unsigned char [width * height * 3];
+    int x, y;
+    int valor;
+
+    int valorAux;
+    double t0,t1;
+    //t0 = omp_get_wtime();
+
+    int cy, cx,c;
+    //#pragma omp parallel for schedule(static) private(cy,cx) //reduction(+:suma)
+    for(cy = 0; cy < height; cy++)
+    {
+        for(int cx = 0; cx < width; cx++)
+        {
+            //#pragma omp critical
+            /*cout<<" new cuadre:   "<<endl;
+            for ( c = 0; c < 3; c++)
+            {
+                x = round (cos(radians)*cx +sin(radians)*cy );               
+                y = round (-sin(radians)*cx + cos(radians)*cy );
+
+                if(x<0) x = 0;
+                if(y<0) y = 0;
+
+                valor = data[3*(x+y*width) + c];
+                valorAux = data[3*(cx+cy*width) + c];
+                cout<< " valor de dilation image:  "<<valorAux<<endl;
+
+                if(valorAux > 0) valor = 0;
+                else valor= 0;
+                dataRotate[3*(cx+cy*width) + c] = valor;
+
+            }*/
+
+            valor = 0;
+            for ( c = 0; c < 3; c++)
+            {
+                valor += data[3*(cx+cy*width) + 0];
+            }
+            cout<<"valor:  "<<valor<<endl;
+            if(valor/3 >=125 ){
+                dataRotate[3*(cx+cy*width) + 0] = 255;
+                dataRotate[3*(cx+cy*width) + 1] = 255;
+                dataRotate[3*(cx+cy*width) + 2] = 255;
+            }else{
+                dataRotate[3*(cx+cy*width) + 0] = 0;
+                dataRotate[3*(cx+cy*width) + 1] = 0;
+                dataRotate[3*(cx+cy*width) + 2] = 0;
+            }
+
+            /*valorAux = data[3*(cx+cy*width) + 0];
+            if(valorAux > 0) valor = 255;
+            else valor = 0;
+            cout<< " valor de dilation image:  "<<valorAux<<endl;
+            dataRotate[3*(cx+cy*width) + 0] = valor;
+            dataRotate[3*(cx+cy*width) + 1] = valor;
+            dataRotate[3*(cx+cy*width) + 2] = valor;
+            */
+            
+        }
+    }
+    //t1 = omp_get_wtime();
+    cout<<" time in rotate image:  "<<(t1-t0)<<endl;
+
+
+    FILE* f2; 
+    f2 = fopen("imgRotate.bmp","wb");
+    fwrite(bmpfileheader,1,14,f2);
+    fwrite(bmpinfoheader,1,40,f2);
+
+    for(int i=height -1; i>=0; i--)
+    {
+        fwrite(dataRotate+(width*(height-i-1)*3),3,width,f2);
+        fwrite(bmppad,1,(4-(width*3)%4)%4,f2);
+    }    
+
+
+}
+
+
+
+void dilationImage(char* filename){
+    FILE* f = fopen(filename, "rb");
+    unsigned char info[54];
+    fread(info, sizeof(unsigned char), 54, f); // read the 54-byte header
+    // extract image height and width from header
+    int width  = *(int*)&info[18];
+    int height = *(int*)&info[22];
+
+    int size = 3 * width * height;
+    unsigned char* data = new unsigned char[size]; // allocate 3 bytes per pixel
+    fread(data, sizeof(unsigned char), size, f); // read the rest of the data at once
+    fclose(f);
+
+    int filesize2 = width*height*3;
+    unsigned char bmpfileheader[14] = {'B','M', 0,0,0,0, 0,0, 0,0, 54,0,0,0};
+    unsigned char bmpinfoheader[40] = {40,0,0,0, 0,0,0,0, 0,0,0,0, 1,0, 24,0};
+    unsigned char bmppad[3] = {0,0,0};
+
+    bmpfileheader[ 2] = (unsigned char)(filesize2);
+    bmpfileheader[ 3] = (unsigned char)(filesize2>> 8);
+    bmpfileheader[ 4] = (unsigned char)(filesize2>>16);
+    bmpfileheader[ 5] = (unsigned char)(filesize2>>24);
+    bmpinfoheader[ 4] = (unsigned char)(width);
+    bmpinfoheader[ 5] = (unsigned char)(width>> 8);
+    bmpinfoheader[ 6] = (unsigned char)(width>>16);
+    bmpinfoheader[ 7] = (unsigned char)(width>>24);
+    bmpinfoheader[ 8] = (unsigned char)(height);
+    bmpinfoheader[ 9] = (unsigned char)(height>> 8);
+    bmpinfoheader[10] = (unsigned char)(height>>16);
+    bmpinfoheader[11] = (unsigned char)(height>>24);
+
+
+    int angle=15;        //45° for example 
+    //Convert degrees to radians 
+    float radians=(2*3.1416*angle)/360; 
+
+    float cosine=(float)cos(radians); 
+    float sine=(float)sin(radians); 
+    unsigned char* dataRotate = new unsigned char [width * height * 3];
+    int x, y;
+    int valor;
+
+    int valorAux;
+    double t0,t1;
+    //t0 = omp_get_wtime();
+
+    int cy, cx,c;
+    //#pragma omp parallel for schedule(static) private(cy,cx) //reduction(+:suma)
+
+    int a[5];
+
+
+    for(cy = 1; cy < height-1; cy++)
+    {
+        for(int cx = 1; cx < width-1; cx++)
+        {
+
+
+            a[0] = data[3*(cx+cy*width) + 0];
+            a[1] = data[3*(cx+1+cy*width) + 0];
+            a[2] = data[3*(cx-1+cy*width) + 0];
+            a[3] = data[3*(cx+(cy+1)*width) + 0];
+            a[4] = data[3*(cx+(cy-1)*width) + 0];
+
+
+            dataRotate[3*(cx+cy*width) + 0] = a[0];
+            dataRotate[3*(cx+cy*width) + 1] = a[0];
+            dataRotate[3*(cx+cy*width) + 2] = a[0];
+
+            for (int i = 0; i < 5; ++i)
+            {
+                if(dataRotate[3*(cx+cy*width) + 0] > a[i]){
+                    dataRotate[3*(cx+cy*width) + 0] = a[i];
+                    dataRotate[3*(cx+cy*width) + 1] = a[i];
+                    dataRotate[3*(cx+cy*width) + 2] = a[i];
+                }
+            }
+        }
+    }
+    //t1 = omp_get_wtime();
+    cout<<" time in rotate image:  "<<(t1-t0)<<endl;
+
+
+    FILE* f2; 
+    f2 = fopen("blackWhite.bmp","wb");
+    fwrite(bmpfileheader,1,14,f2);
+    fwrite(bmpinfoheader,1,40,f2);
+
+    for(int i=height -1; i>=0; i--)
+    {
+        fwrite(dataRotate+(width*(height-i-1)*3),3,width,f2);
+        fwrite(bmppad,1,(4-(width*3)%4)%4,f2);
+    }    
+
+
+}
+
+
+
 
 int main(){
-    showData("bee.bmp");
+    showData("blacoNegro.bmp");
     //readBMP("lena.bmp");
     
 
-    imageScale(3,3,"bee.bmp");
+    //imageScale(3,3,"bee.bmp");
 
 
     //rotateImage("bee.bmp");
@@ -979,13 +1197,13 @@ int main(){
 
     //ecualizacion("bee.bmp");
 
-    SaltPepperNoise("bee.bmp");
-    medianImage("SalYPimienta.bmp");
+    //SaltPepperNoise("bee.bmp");
+    //medianImage("SalYPimienta.bmp");
 
-    cout<<"sal y pimienta"<<endl;
+    //cout<<"sal y pimienta"<<endl;
 
-    
-
+    blackWhileImage("bee.bmp");
+    dilationImage("imgRotate.bmp");
 
 
 

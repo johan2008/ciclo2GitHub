@@ -1,25 +1,49 @@
-import pandas as pd
-from sklearn.externals import joblib
-from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.feature_extraction import DictVectorizer
-from sklearn.linear_model import SGDClassifier
-from sklearn.multiclass import OneVsRestClassifier
-from sklearn.naive_bayes import MultinomialNB
-from sklearn import svm
-import xml.etree.ElementTree as ET
-from lxml import etree
-from scipy.sparse import hstack
-import numpy as np
-import warnings
+#!/usr/bin/env python2
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Mar 29 01:10:55 2017
+@author: vicz
+"""
+print '''
+     +-+-+-+-+-+-+ +-+-+-+-+-+ +-+-+-+-+-+-+-+-+-+ +-+-+-+-+-+-+-+-+    
+     |A|s|p|e|c|t| |b|a|s|e|d| |s|e|n|t|i|m|e|n|t| |a|n|a|l|y|s|i|s|    
+     +-+-+-+-+-+-+ +-+-+-+-+-+ +-+-+-+-+-+-+-+-+-+ +-+-+-+-+-+-+-+-+    
+                                                               |b|y|    
+                                                               +-+-+-+-+
+                                                               |v|i|c|z|
+                                                               +-+-+-+-+
+    
+'''
+from textblob import TextBlob
+import sys
 
+def main():
+    blob=TextBlob(sys.argv[1])
+    tokens=list(blob.words)
+    word=[]
+    sent=[]
+    c=0
+    i=0
+    for words,pos in blob.tags:
+        if pos=='JJ' or pos=='NN' or pos=='JJR' or pos=='NNS':
+            word.append(words)
+    if len(word)>=2:
+    	for i in range(len(word)):
+    		if len(word)>=2:
+    			print i
+	    		firstw=word[0]
+	    		secw=word[1]
+	    		word.remove(firstw)
+	    		word.remove(secw)
+	    		findx=tokens.index(firstw)
+	    		lindx=tokens.index(secw)
+	    		sent.append(' '.join(tokens[findx:lindx+1]))
 
-path_train = r'E:\Engineering\8th sem\nlp COMP 473\NLP projects\ABSA16_Laptops_Train_English_SB2.xml'
-path_test = r'E:\Engineering\8th sem\nlp COMP 473\NLP projects\EN_LAPT_SB2_TEST.xml'
-
-#For stanford POS Tagger
-home = r'C:\Users\THe_strOX\Anaconda3\stanford-postagger-full-2017-06-09'
-from nltk.tag.stanford import StanfordPOSTagger as POS_Tag
-from nltk import word_tokenize
-_path_to_model = home + '/models/english-bidirectional-distsim.tagger' 
-_path_to_jar = home + '/stanford-postagger.jar'
-stanford_tag = POS_Tag(model_filename=_path_to_model, path_to_jar=_path_to_jar)
+    print sent
+    print tokens
+    print "Sentence and polarity"    
+    for sentence in sent:
+        print sentence,TextBlob(sentence).polarity
+                
+if __name__=='__main__':
+    main()
